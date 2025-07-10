@@ -1,0 +1,18 @@
+{
+  "short_name": "IsamApp",
+  "name": "Isam Electric Assistant",
+"icons": [
+  {
+    "src": "icon.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  }
+],
+"background_color": "#ffffff",
+"theme_color": "#00aaff",
+"display": "standalone",
+"orientation": "portrait",
+"scope": "/",
+"start_url": "."
+  
+} 
