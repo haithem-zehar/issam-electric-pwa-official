@@ -24,10 +24,21 @@ function getNextId(items) {
 }
 
 // Database functions
-const addClient = async (name, phone) => {
+const addClient = async (name, phone, advance, notes = "") => {
   const clients = getLocal(CLIENTS_KEY);
   const id = getNextId(clients);
-  const newClient = { id: String(id), name, phone, purchases: [] }; // Ensure ID is string
+  const now = new Date();
+  const advanceData = Number(advance) || 0;
+  
+  const newClient = { 
+    id: String(id), 
+    name, 
+    phone, 
+    advance: advanceData,
+    advanceDate: advanceData > 0 ? now.toISOString() : null, // Record timestamp when advance is added
+    notes: notes || "", // Add notes field
+    purchases: [] 
+  };
   clients.push(newClient);
   setLocal(CLIENTS_KEY, clients);
   console.log("Added client:", newClient);
@@ -35,14 +46,43 @@ const addClient = async (name, phone) => {
 };
 
 const getClients = async () => {
-  return getLocal(CLIENTS_KEY);
+  return getLocal(CLIENTS_KEY) || [];
 };
 
-const updateClient = async (id, name, phone) => {
+const updateClient = async (id, name, phone, advance, notes) => {
   const clients = getLocal(CLIENTS_KEY);
   const idx = clients.findIndex(c => c.id === id);
   if (idx !== -1) {
-    clients[idx] = { ...clients[idx], name, phone };
+    const oldAdvance = clients[idx].advance || 0;
+    const newAdvance = Number(advance) || 0;
+    const now = new Date();
+    
+    // Only update advanceDate if the advance amount has changed
+    let advanceDate = clients[idx].advanceDate;
+    if (newAdvance !== oldAdvance) {
+      advanceDate = newAdvance > 0 ? now.toISOString() : null;
+    }
+    
+    clients[idx] = { 
+      ...clients[idx], 
+      name, 
+      phone, 
+      advance: newAdvance,
+      advanceDate: advanceDate,
+      notes: notes || clients[idx].notes || "" // Preserve existing notes if not provided
+    };
+    setLocal(CLIENTS_KEY, clients);
+  }
+};
+
+const updateClientNotes = async (id, notes) => {
+  const clients = getLocal(CLIENTS_KEY);
+  const idx = clients.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    clients[idx] = { 
+      ...clients[idx], 
+      notes: notes || ""
+    };
     setLocal(CLIENTS_KEY, clients);
   }
 };
@@ -189,9 +229,50 @@ const EMPLOYEE_STORAGE_KEY = "isam_electric_employees";
 
 // --- 1. Price formatting helper ---
 function formatPriceArabic(price) {
-  // Always show as 35,000 DA (comma, RTL-friendly)
-  if (isNaN(price)) return '';
-  return `${Number(price).toLocaleString('ar-DZ')} DA`;
+  // Enhanced number formatting - removes slashes and uses proper formatting
+  if (isNaN(price)) return '0 دج';
+  // Convert to string, remove any existing slashes, then format with commas
+  const cleanNumber = String(price).replace(/\//g, '');
+  const numericValue = Number(cleanNumber);
+  // Use standard number formatting with commas
+  return `${numericValue.toLocaleString('en-US')} دج`;
+}
+
+// --- 2. Advance date formatting helper ---
+function formatAdvanceDate(advanceDate) {
+  if (!advanceDate) return '';
+  
+  try {
+    const date = new Date(advanceDate);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Format: "15/12/2024 - 14:30" (DD/MM/YYYY - HH:MM)
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    const formattedDate = `${day}/${month}/${year} - ${hours}:${minutes}`;
+    
+    // Add relative time for recent advances (within 7 days)
+    if (diffDays <= 7) {
+      if (diffDays === 0) {
+        return `${formattedDate} (اليوم)`;
+      } else if (diffDays === 1) {
+        return `${formattedDate} (أمس)`;
+      } else {
+        return `${formattedDate} (منذ ${diffDays} أيام)`;
+      }
+    }
+    
+    return formattedDate;
+  } catch (error) {
+    console.error('Error formatting advance date:', error);
+    return '';
+  }
 }
 
 // French translation mapping for common electrical terms
@@ -472,10 +553,14 @@ function translateToFrench(text) {
   return translated;
 }
 
+const DEFAULT_USERNAME = 'issam';
+const DEFAULT_PASSWORD = '123';
+
 function App() {
   // Password protection state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState(() => localStorage.getItem('isam_username') || DEFAULT_USERNAME);
+  const [password, setPassword] = useState(() => localStorage.getItem('isam_password') || DEFAULT_PASSWORD);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isam_authenticated') === 'true');
   const [passwordError, setPasswordError] = useState("");
 
   // Navigation state
@@ -484,10 +569,18 @@ function App() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState("");
 
+  // Offline status
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [showOfflineNotification, setShowOfflineNotification] = useState(false);
+  
+  // PWA installation
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
   // Customer management
   const [customers, setCustomers] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", notes: "" });
+  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", advance: "", notes: "" });
 
   // Purchase management (per customer)
   const [itemName, setItemName] = useState("");
@@ -517,6 +610,14 @@ function App() {
 
   // Add state for search
   const [customerSearch, setCustomerSearch] = useState("");
+  
+  // Add state for editing client notes
+  const [editingNotes, setEditingNotes] = useState({});
+  const [showNotesEditor, setShowNotesEditor] = useState({});
+  
+  // Add state for advance payments
+  const [showAdvanceModal, setShowAdvanceModal] = useState({});
+  const [advanceAmount, setAdvanceAmount] = useState({});
 
   // Comprehensive electrical materials list for residential and industrial work
   const ELECTRICAL_MATERIALS = [
@@ -633,21 +734,31 @@ function App() {
   // Password protection functions
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
-    if (password === correctPassword) {
+    if (username === DEFAULT_USERNAME && password === DEFAULT_PASSWORD) {
       setIsAuthenticated(true);
       setPasswordError("");
-      setPassword("");
+      localStorage.setItem('isam_authenticated', 'true');
+      localStorage.setItem('isam_username', username);
+      localStorage.setItem('isam_password', password);
     } else {
-      setPasswordError("كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.");
-      setPassword("");
+      setPasswordError("اسم المستخدم أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.");
     }
   };
-
+  const handleUsernameChange = (e) => {
+    setUsername(e.target.value);
+    if (passwordError) setPasswordError("");
+  };
   const handlePasswordChange = (e) => {
     setPassword(e.target.value);
-    if (passwordError) {
-      setPasswordError("");
-    }
+    if (passwordError) setPasswordError("");
+  };
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('isam_authenticated');
+    localStorage.removeItem('isam_username');
+    localStorage.removeItem('isam_password');
+    setUsername(DEFAULT_USERNAME);
+    setPassword(DEFAULT_PASSWORD);
   };
 
   // Load from localStorage
@@ -661,6 +772,66 @@ function App() {
       setEmployees(dbEmployees);
     })();
   }, []);
+
+  // Handle online/offline status
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      setShowOfflineNotification(false);
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+      setShowOfflineNotification(true);
+      // Hide notification after 5 seconds
+      setTimeout(() => setShowOfflineNotification(false), 5000);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Handle PWA installation
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+    };
+
+    const handleAppInstalled = () => {
+      setShowInstallPrompt(false);
+      setDeferredPrompt(null);
+      console.log('PWA was installed');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        console.log('User accepted the install prompt');
+      } else {
+        console.log('User dismissed the install prompt');
+      }
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
+    }
+  };
 
   // Initialize default workers on first load
   useEffect(() => {
@@ -704,22 +875,84 @@ function App() {
   // Replace customer and employee state initialization and CRUD with async DB calls
   const handleAddCustomer = async (e) => {
     e.preventDefault();
-    if (!newCustomer.name.trim()) {
-      alert("يرجى إدخال اسم الزبون");
-      return;
-    }
-    
+    if (!newCustomer.name) return setFormError("يرجى إدخال اسم الزبون");
     try {
-      const newClient = await addClient(newCustomer.name.trim(), newCustomer.phone.trim());
-      const dbClients = await getClients();
-      setCustomers(dbClients);
+      const newClient = await addClient(newCustomer.name, newCustomer.phone, newCustomer.advance, newCustomer.notes);
+      setCustomers(await getClients());
       setSelectedCustomerId(newClient.id);
-      setNewCustomer({ name: "", phone: "", notes: "" });
+      setNewCustomer({ name: "", phone: "", advance: "", notes: "" });
       console.log("Customer added successfully:", newClient);
     } catch (error) {
-      console.error("Error adding customer:", error);
-      alert("حدث خطأ أثناء إضافة الزبون");
+      setFormError("حدث خطأ أثناء إضافة الزبون");
     }
+  };
+
+  // Handle notes editing
+  const handleEditNotes = (clientId) => {
+    const client = customers.find(c => c.id === clientId);
+    setEditingNotes({ ...editingNotes, [clientId]: client.notes || "" });
+    setShowNotesEditor({ ...showNotesEditor, [clientId]: true });
+  };
+
+  const handleSaveNotes = async (clientId) => {
+    try {
+      await updateClientNotes(clientId, editingNotes[clientId]);
+      setCustomers(await getClients());
+      setShowNotesEditor({ ...showNotesEditor, [clientId]: false });
+      setEditingNotes({ ...editingNotes, [clientId]: "" });
+    } catch (error) {
+      console.error("Error updating notes:", error);
+    }
+  };
+
+  const handleCancelNotes = (clientId) => {
+    setShowNotesEditor({ ...showNotesEditor, [clientId]: false });
+    setEditingNotes({ ...editingNotes, [clientId]: "" });
+  };
+
+  // Handle advance payments
+  const handleAddAdvance = (clientId) => {
+    const client = customers.find(c => c.id === clientId);
+    setAdvanceAmount({ ...advanceAmount, [clientId]: "" });
+    setShowAdvanceModal({ ...showAdvanceModal, [clientId]: true });
+  };
+
+  const handleSaveAdvance = async (clientId) => {
+    const amount = parseFloat(advanceAmount[clientId]);
+    if (isNaN(amount) || amount <= 0) {
+      alert("يرجى إدخال مبلغ صحيح");
+      return;
+    }
+
+    try {
+      const client = customers.find(c => c.id === clientId);
+      const currentAdvance = parseFloat(client.advance) || 0;
+      const newTotalAdvance = currentAdvance + amount;
+      
+      // Update client with new advance amount and timestamp
+      await updateClient(clientId, client.name, client.phone, newTotalAdvance.toString(), client.notes);
+      
+      // Refresh customers list
+      setCustomers(await getClients());
+      
+      // Close modal and reset
+      setShowAdvanceModal({ ...showAdvanceModal, [clientId]: false });
+      setAdvanceAmount({ ...advanceAmount, [clientId]: "" });
+      
+      // Show success message
+      const successMessage = `تم إضافة تسبيق بقيمة ${formatPriceArabic(amount)} للزبون ${client.name}\nإجمالي التسبيق: ${formatPriceArabic(newTotalAdvance)}`;
+      alert(successMessage);
+      
+      console.log(`Advance payment of ${amount} added for client ${client.name}`);
+    } catch (error) {
+      console.error("Error adding advance payment:", error);
+      alert("حدث خطأ أثناء إضافة التسبيق");
+    }
+  };
+
+  const handleCancelAdvance = (clientId) => {
+    setShowAdvanceModal({ ...showAdvanceModal, [clientId]: false });
+    setAdvanceAmount({ ...advanceAmount, [clientId]: "" });
   };
 
   // Clean purchase handling with client selection
@@ -1098,7 +1331,16 @@ function App() {
   const generateWhatsAppMessage = (customer) => {
     let message = `الزبون: ${customer.name || "-"}`;
     if (customer.phone) message += `\nالهاتف: ${customer.phone}`;
-    if (customer.notes) message += `\nملاحظات: ${customer.notes}`;
+    if (customer.advance) {
+      message += `\nتسبيق من طرف الزبون (دج): ${formatPriceArabic(customer.advance)}`;
+      if (customer.advanceDate) {
+        message += `\nتاريخ التسبيق: ${formatAdvanceDate(customer.advanceDate)}`;
+        message += `\nوقت التسبيق: ${new Date(customer.advanceDate).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}`;
+      }
+    }
+    if (customer.notes) {
+      message += `\nملاحظات: ${customer.notes}`;
+    }
     message += "\n\nالمشتريات:";
     
     // Get live data from database
@@ -1111,7 +1353,7 @@ function App() {
       } else if (item.paymentStatus === 'credit') {
         paymentText = " (كريدي)";
       }
-      message += `\n${idx + 1}. ${item.item_name} x${item.quantity || 1} - ${item.price} DA (${item.store_name})${paymentText}`;
+      message += `\n${idx + 1}. ${item.item_name} x${item.quantity || 1} - ${formatPriceArabic(item.price)} (${item.store_name})${paymentText}`;
     });
     
     const total = customerPurchases.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
@@ -1122,12 +1364,12 @@ function App() {
       .filter(item => item.paymentStatus === 'credit')
       .reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
       
-    message += `\n\nالمجموع: ${total} DA`;
+    message += `\n\nالمجموع: ${formatPriceArabic(total)}`;
     if (paidByIssamTotal > 0) {
-      message += `\nمدفوع من طرف عصام: ${paidByIssamTotal} DA`;
+      message += `\nمدفوع من طرف عصام: ${formatPriceArabic(paidByIssamTotal)}`;
     }
     if (creditTotal > 0) {
-      message += `\nكريدي: ${creditTotal} DA`;
+      message += `\nكريدي: ${formatPriceArabic(creditTotal)}`;
     }
     return message;
   };
@@ -1380,6 +1622,42 @@ function App() {
     </nav>
   );
 
+  // Professional Header Component
+  const AppHeader = () => (
+    <header className="app-header">
+      <div className="header-container">
+        <div className="header-logo-section">
+          <img 
+            src="/issam-logo.png" 
+            alt="عصام إلكتريك" 
+            className="header-logo"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'block';
+            }}
+          />
+          <div className="header-logo-fallback" style={{ display: 'none' }}>
+            ⚡
+          </div>
+        </div>
+        <div className="header-content">
+          <h1 className="header-title">عصام إلكتريك</h1>
+          <p className="header-subtitle">نظام إدارة الأعمال الكهربائية</p>
+        </div>
+        <div className="header-actions">
+          <button 
+            className="header-logout-btn"
+            onClick={handleLogout}
+            title="تسجيل الخروج"
+          >
+            <span className="logout-icon">🚪</span>
+            <span className="logout-text">خروج</span>
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+
   // Render active section
   const renderSection = () => {
     switch (activeSection) {
@@ -1404,11 +1682,29 @@ function App() {
                 onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
               />
               <input
+                key="customer-advance-input"
+                type="number"
+                placeholder="تسبيق من طرف الزبون (دج)"
+                value={newCustomer.advance}
+                onChange={(e) => setNewCustomer({ ...newCustomer, advance: e.target.value })}
+                min="0"
+                step="0.01"
+              />
+              <textarea
                 key="customer-notes-input"
-                type="text"
-                placeholder="ملاحظات (الموقع، التوصيل، إلخ)"
+                placeholder="ملاحظات خاصة بالزبون (اختياري)"
                 value={newCustomer.notes}
                 onChange={(e) => setNewCustomer({ ...newCustomer, notes: e.target.value })}
+                rows="3"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  minHeight: '80px'
+                }}
               />
               <button className="main-btn" type="submit">إضافة زبون</button>
             </form>
@@ -1424,18 +1720,59 @@ function App() {
                   .filter(c => c.name.toLowerCase().includes(customerSearch.toLowerCase()))
                   .map((c) => (
                     <div key={c.id} className="customer-entry">
-                      <span className="customer-name">{c.name} {c.phone ? `(${c.phone})` : ""}</span>
-                      {hasUnpaidOverdue(c) && <span className="unpaid-badge">غير مدفوع</span>}
-                      <button
-                        className="delete-btn"
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          await handleDeleteClient(c.id);
-                        }}
-                        type="button"
-                      >
-                        حذف
-                      </button>
+                      <div className="customer-info">
+                        <span className="customer-name">{c.name} {c.phone ? `(${c.phone})` : ""}</span>
+                        {c.notes && (
+                          <div className="customer-notes-preview">
+                            <span className="notes-preview-text">{c.notes.length > 50 ? c.notes.substring(0, 50) + '...' : c.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="customer-actions">
+                        {hasUnpaidOverdue(c) && <span className="unpaid-badge">غير مدفوع</span>}
+                        <button
+                          className="edit-notes-btn"
+                          onClick={() => handleEditNotes(c.id)}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#2196F3',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.7rem',
+                            marginRight: '8px'
+                          }}
+                        >
+                          ملاحظات
+                        </button>
+                        <button
+                          className="add-advance-btn"
+                          onClick={() => handleAddAdvance(c.id)}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#ff9800',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.7rem',
+                            marginRight: '8px'
+                          }}
+                        >
+                          تسبيق
+                        </button>
+                        <button
+                          className="delete-btn"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            await handleDeleteClient(c.id);
+                          }}
+                          type="button"
+                        >
+                          حذف
+                        </button>
+                      </div>
                     </div>
                   ))}
               </div>
@@ -1596,22 +1933,22 @@ function App() {
                     <div className="purchases-actions-simple">
                       <span className="item-count-simple">{itemCount} سلعة{itemCount !== 1 ? "ات" : ""}</span>
                       {itemCount > 0 && (
-                        <div className="export-buttons-simple">
+                        <div className="export-buttons-compact">
                           <button
-                            className="btn btn-export-simple"
+                            className="btn-export-compact"
                             onClick={() => handleExportToExcel(customers.find((c) => c.id === selectedCustomerId))}
                             title="تصدير إلى Excel"
                           >
                             <span className="icon icon-excel"></span>
-                            تصدير إلى Excel
+                            Excel
                           </button>
                           <button
-                            className="btn btn-export-simple"
+                            className="btn-export-compact"
                             onClick={handlePDF}
                             title="تصدير إلى PDF"
                           >
                             <span className="icon icon-pdf"></span>
-                            تصدير إلى PDF
+                            PDF
                           </button>
                         </div>
                       )}
@@ -1694,22 +2031,22 @@ function App() {
                       {/* Export Buttons at Bottom */}
                       <div className="export-buttons-bottom">
                         <h4>تصدير البيانات</h4>
-                        <div className="export-buttons-simple">
+                        <div className="export-buttons-compact">
                           <button
-                            className="btn btn-export-simple"
+                            className="btn-export-compact"
                             onClick={() => handleExportToExcel(customers.find((c) => c.id === selectedCustomerId))}
                             title="تصدير إلى Excel"
                           >
                             <span className="icon icon-excel"></span>
-                            تصدير إلى Excel
+                            Excel
                           </button>
                           <button
-                            className="btn btn-export-simple"
+                            className="btn-export-compact"
                             onClick={handlePDF}
                             title="تصدير إلى PDF"
                           >
                             <span className="icon icon-pdf"></span>
-                            تصدير إلى PDF
+                            PDF
                           </button>
                         </div>
                       </div>
@@ -1875,63 +2212,292 @@ function App() {
         );
 
       case 'reports':
+        // Calculate total advances
+        const totalAdvances = customers.reduce((sum, c) => sum + (Number(c.advance) || 0), 0);
         return (
           <section className="reports-section card">
-            <h2>نظرة عامة مالية</h2>
-            <div className="dashboard-grid">
-              <div key="unpaid-balances" className="dashboard-item">
-                <strong>✅ إجمالي المبالغ غير المدفوعة للمشتريات:</strong>
-                <span>{formatPriceArabic(totalUnpaidBalances)}</span>
+            <div className="customer-reports">
+              <h2 className="section-title">تقارير الزبائن</h2>
+              
+              {/* Customer Reports Grid - Moved to top */}
+              <div className="customer-reports-grid">
+                {customers.map(customer => {
+                  // Get live data from database
+                  const customerPurchases = getLocal(PURCHASES_KEY).filter(p => String(p.client_id) === String(customer.id));
+                  const customerTotal = customerPurchases.reduce((sum, item) => sum + (parseFloat(item.price) * (parseInt(item.quantity) || 1)), 0);
+                  const customerPaidByIssam = customerPurchases
+                    .filter(item => item.paymentStatus === 'issam')
+                    .reduce((sum, item) => sum + (parseFloat(item.price) * (parseInt(item.quantity) || 1)), 0);
+                  const customerCredit = customerPurchases
+                    .filter(item => item.paymentStatus === 'credit')
+                    .reduce((sum, item) => sum + (parseFloat(item.price) * (parseInt(item.quantity) || 1)), 0);
+                  const customerPaid = customerPurchases
+                    .filter(item => item.paymentStatus === 'customer')
+                    .reduce((sum, item) => sum + (parseFloat(item.price) * (parseInt(item.quantity) || 1)), 0);
+                  
+                  const remainingBalance = customerTotal - customerPaid - (Number(customer.advance) || 0);
+                  
+                  return (
+                    <div key={customer.id} className="customer-report modern-customer-report">
+                      <div className="customer-report-header">
+                        <div className="customer-info">
+                          <span className="customer-report-name">{customer.name}</span>
+                          {customer.phone && <span className="customer-report-phone">{customer.phone}</span>}
+                        </div>
+                        <div className="customer-status">
+                          {remainingBalance > 0 ? (
+                            <span className="status-badge unpaid">معلق</span>
+                          ) : (
+                            <span className="status-badge paid">مكتمل</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="report-details">
+                        <div className="detail-row">
+                          <span className="detail-label">إجمالي المشتريات:</span>
+                          <span className="detail-value">{formatPriceArabic(customerTotal)}</span>
+                        </div>
+                        
+                        {customerPaidByIssam > 0 && (
+                          <div className="detail-row issam-paid">
+                            <span className="detail-label">مدفوع من عصام:</span>
+                            <span className="detail-value">{formatPriceArabic(customerPaidByIssam)}</span>
+                          </div>
+                        )}
+                        
+                        {customerCredit > 0 && (
+                          <div className="detail-row credit">
+                            <span className="detail-label">كريدي:</span>
+                            <span className="detail-value">{formatPriceArabic(customerCredit)}</span>
+                          </div>
+                        )}
+                        
+                        {customerPaid > 0 && (
+                          <div className="detail-row customer-paid">
+                            <span className="detail-label">مدفوع من الزبون:</span>
+                            <span className="detail-value">{formatPriceArabic(customerPaid)}</span>
+                          </div>
+                        )}
+                        
+                        {customer.advance && Number(customer.advance) > 0 && (
+                          <div className="detail-row advance">
+                            <span className="detail-label">تسبيق من الزبون:</span>
+                            <div className="detail-value-container">
+                              <span className="detail-value">{formatPriceArabic(customer.advance)}</span>
+                              {customer.advanceDate && (
+                                <div className="advance-date-info">
+                                  <span className="advance-date">{formatAdvanceDate(customer.advanceDate)}</span>
+                                  <span className="advance-time">{new Date(customer.advanceDate).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {remainingBalance > 0 && (
+                          <div className="detail-row remaining">
+                            <span className="detail-label">المبلغ المتبقي:</span>
+                            <span className="detail-value remaining-amount">{formatPriceArabic(remainingBalance)}</span>
+                          </div>
+                        )}
+                        
+                        {/* Notes Section */}
+                        <div className="detail-row notes-section">
+                          <span className="detail-label">ملاحظات:</span>
+                          <div className="notes-content">
+                            {showNotesEditor[customer.id] ? (
+                              <div className="notes-editor">
+                                <textarea
+                                  value={editingNotes[customer.id] || ""}
+                                  onChange={(e) => setEditingNotes({ ...editingNotes, [customer.id]: e.target.value })}
+                                  placeholder="أضف ملاحظات خاصة بالزبون..."
+                                  rows="3"
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '6px',
+                                    fontFamily: 'inherit',
+                                    resize: 'vertical',
+                                    minHeight: '60px',
+                                    fontSize: '0.9rem'
+                                  }}
+                                />
+                                <div className="notes-actions" style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                                  <button
+                                    onClick={() => handleSaveNotes(customer.id)}
+                                    style={{
+                                      padding: '4px 12px',
+                                      backgroundColor: '#4CAF50',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.8rem'
+                                    }}
+                                  >
+                                    حفظ
+                                  </button>
+                                  <button
+                                    onClick={() => handleCancelNotes(customer.id)}
+                                    style={{
+                                      padding: '4px 12px',
+                                      backgroundColor: '#f44336',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.8rem'
+                                    }}
+                                  >
+                                    إلغاء
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="notes-display">
+                                {customer.notes ? (
+                                  <span className="notes-text" style={{ color: '#666', fontStyle: 'italic' }}>
+                                    {customer.notes}
+                                  </span>
+                                ) : (
+                                  <span className="no-notes" style={{ color: '#999', fontStyle: 'italic' }}>
+                                    لا توجد ملاحظات
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => handleEditNotes(customer.id)}
+                                  style={{
+                                    marginRight: '8px',
+                                    padding: '2px 8px',
+                                    backgroundColor: '#2196F3',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.7rem'
+                                  }}
+                                >
+                                  {customer.notes ? 'تعديل' : 'إضافة'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Action Buttons - Only WhatsApp, removed PDF export */}
+                      <div className="customer-actions">
+                        <button 
+                          className="action-btn btn-success"
+                          onClick={() => handleSendWhatsApp(customer)}
+                        >
+                          📱 واتساب
+                        </button>
+                        <button 
+                          className="action-btn btn-advance"
+                          onClick={() => handleAddAdvance(customer.id)}
+                          style={{
+                            backgroundColor: '#ff9800',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: '500',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          💰 إضافة تسبيق
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div key="employee-wages" className="dashboard-item">
-                <strong>🧾 إجمالي رواتب العمال:</strong>
-                <span>{formatPriceArabic(totalEmployeeWages)}</span>
-              </div>
-              <div key="unpaid-wages" className="dashboard-item">
-                <strong>❌ إجمالي الرواتب غير المدفوعة:</strong>
-                <span>{formatPriceArabic(totalUnpaidWages)}</span>
-              </div>
-              <div key="clients-served" className="dashboard-item">
-                <strong>✅ عدد الزبائن:</strong>
-                <span>{clientsServed}</span>
-              </div>
-              <div key="purchases-month" className="dashboard-item">
-                <strong>📦 المشتريات هذا الشهر:</strong>
-                <span>{totalPurchasesThisMonth}</span>
-              </div>
-              <div key="paid-by-issam" className="dashboard-item">
-                <strong>💰 مدفوع من طرف عصام:</strong>
-                <span>{formatPriceArabic(totalPaidByIssam)}</span>
+              
+              {/* Summary Statistics - Moved to bottom */}
+              <div className="reports-summary-stats">
+                <div className="stat-card">
+                  <div className="stat-icon">👥</div>
+                  <div className="stat-content">
+                    <div className="stat-value">{customers.length}</div>
+                    <div className="stat-label">إجمالي الزبائن</div>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">💰</div>
+                  <div className="stat-content">
+                    <div className="stat-value">{formatPriceArabic(totalAdvances)}</div>
+                    <div className="stat-label">إجمالي التسبيقات</div>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">📊</div>
+                  <div className="stat-content">
+                    <div className="stat-value">{formatPriceArabic(totalUnpaidBalances)}</div>
+                    <div className="stat-label">المبالغ المعلقة</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="customer-reports">
-              <h3>تقارير الزبائن</h3>
-              {customers.map(customer => {
-                // Get live data from database
-                const customerPurchases = getLocal(PURCHASES_KEY).filter(p => String(p.client_id) === String(customer.id));
-                const customerTotal = customerPurchases.reduce((sum, item) => sum + (parseFloat(item.price) * (parseInt(item.quantity) || 1)), 0);
-                const customerPaidByIssam = customerPurchases
-                  .filter(item => item.paymentStatus === 'issam')
-                  .reduce((sum, item) => sum + (parseFloat(item.price) * (parseInt(item.quantity) || 1)), 0);
-                const customerCredit = customerPurchases
-                  .filter(item => item.paymentStatus === 'credit')
-                  .reduce((sum, item) => sum + (parseFloat(item.price) * (parseInt(item.quantity) || 1)), 0);
-                const customerPaid = customerPurchases
-                  .filter(item => item.paymentStatus === 'customer')
-                  .reduce((sum, item) => sum + (parseFloat(item.price) * (parseInt(item.quantity) || 1)), 0);
-                
-                return (
-                  <div key={customer.id} className="customer-report">
-                    <h4>{customer.name}</h4>
-                    <div className="report-details">
-                      <div key={`${customer.id}-total-purchases`}>إجمالي المشتريات: {formatPriceArabic(customerTotal)}</div>
-                      <div key={`${customer.id}-paid-by-issam`}>مدفوع من طرف عصام: {formatPriceArabic(customerPaidByIssam)}</div>
-                      <div key={`${customer.id}-credit`}>كريدي: {formatPriceArabic(customerCredit)}</div>
-                      <div key={`${customer.id}-paid-by-customer`}>مدفوع من الزبون: {formatPriceArabic(customerPaid)}</div>
-                    </div>
+            
+            {/* Financial Overview */}
+            <div className="financial-overview">
+              <h2 className="section-title">نظرة عامة مالية</h2>
+              <div className="dashboard-grid">
+                <div key="unpaid-balances" className="dashboard-item">
+                  <div className="dashboard-icon">⚠️</div>
+                  <div className="dashboard-content">
+                    <strong>إجمالي المبالغ غير المدفوعة:</strong>
+                    <span>{formatPriceArabic(totalUnpaidBalances)}</span>
                   </div>
-                );
-              })}
+                </div>
+                <div key="employee-wages" className="dashboard-item">
+                  <div className="dashboard-icon">👷</div>
+                  <div className="dashboard-content">
+                    <strong>إجمالي رواتب العمال:</strong>
+                    <span>{formatPriceArabic(totalEmployeeWages)}</span>
+                  </div>
+                </div>
+                <div key="unpaid-wages" className="dashboard-item">
+                  <div className="dashboard-icon">❌</div>
+                  <div className="dashboard-content">
+                    <strong>الرواتب غير المدفوعة:</strong>
+                    <span>{formatPriceArabic(totalUnpaidWages)}</span>
+                  </div>
+                </div>
+                <div key="clients-served" className="dashboard-item">
+                  <div className="dashboard-icon">✅</div>
+                  <div className="dashboard-content">
+                    <strong>عدد الزبائن:</strong>
+                    <span>{clientsServed}</span>
+                  </div>
+                </div>
+                <div key="purchases-month" className="dashboard-item">
+                  <div className="dashboard-icon">📦</div>
+                  <div className="dashboard-content">
+                    <strong>المشتريات هذا الشهر:</strong>
+                    <span>{totalPurchasesThisMonth}</span>
+                  </div>
+                </div>
+                <div key="paid-by-issam" className="dashboard-item">
+                  <div className="dashboard-icon">💰</div>
+                  <div className="dashboard-content">
+                    <strong>مدفوع من عصام:</strong>
+                    <span>{formatPriceArabic(totalPaidByIssam)}</span>
+                  </div>
+                </div>
+                <div key="advance-total" className="dashboard-item">
+                  <div className="dashboard-icon">💵</div>
+                  <div className="dashboard-content">
+                    <strong>تسبيقات الزبائن:</strong>
+                    <span>{formatPriceArabic(totalAdvances)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
         );
@@ -1948,166 +2514,193 @@ function App() {
         <div className="password-screen">
           <div className="password-container">
             <div className="password-header">
-              <img src="/issam-logo.png" alt="شعار عصام إلكتريك" />
-              <h1>مساعد عصام إلكتريك</h1>
-              <p>يرجى إدخال كلمة المرور للوصول إلى النظام</p>
+              <div className="app-logo">⚡</div>
+              <h1>عصام إلكتريك</h1>
+              <p>نظام إدارة الأعمال الكهربائية</p>
             </div>
-            
-            <form className="password-form" onSubmit={handlePasswordSubmit}>
-              <div className="password-input-group">
+            <form onSubmit={handlePasswordSubmit} className="password-form">
+              <div className="form-group">
+                <label>اسم المستخدم:</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={handleUsernameChange}
+                  className="password-input"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>كلمة المرور:</label>
                 <input
                   type="password"
                   value={password}
                   onChange={handlePasswordChange}
-                  placeholder="أدخل كلمة المرور"
                   className="password-input"
-                  autoFocus
                   required
                 />
-                <button type="submit" className="password-submit-btn">
-                  دخول
-                </button>
               </div>
-              
-              {passwordError && (
-                <div className="password-error">
-                  {passwordError}
-                </div>
-              )}
+              {passwordError && <div className="password-error">{passwordError}</div>}
+              <button type="submit" className="password-submit-btn">دخول</button>
             </form>
-            
-            <div className="password-footer">
-              <p>نظام إدارة عصام إلكتريك</p>
-            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Main app content
   return (
     <div className="app-bg" dir="rtl">
-      <header>
-        <img src="/issam-logo.png" alt="شعار عصام إلكتريك" />
-        <h1>مساعد عصام إلكتريك</h1>
-      </header>
-
+      {/* Offline Notification */}
+      {showOfflineNotification && (
+        <div className="offline-notification">
+          <div className="offline-content">
+            <span className="offline-icon">📶</span>
+            <span className="offline-text">أنت في وضع عدم الاتصال - التطبيق يعمل محلياً</span>
+            <button 
+              className="offline-close"
+              onClick={() => setShowOfflineNotification(false)}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* PWA Installation Prompt */}
+      {showInstallPrompt && (
+        <div className="install-prompt">
+          <div className="install-content">
+            <span className="install-icon">📱</span>
+            <span className="install-text">ثبت التطبيق للوصول السريع</span>
+            <div className="install-actions">
+              <button 
+                className="install-btn"
+                onClick={handleInstallPWA}
+              >
+                تثبيت
+              </button>
+              <button 
+                className="install-dismiss"
+                onClick={() => setShowInstallPrompt(false)}
+              >
+                لاحقاً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <AppHeader />
       <Navigation />
-
-      <main className="app-container">
+      <div className="app-container">
         {renderSection()}
-      </main>
+      </div>
       
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="modal-overlay" onClick={() => setShowConfirmModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>تأكيد العملية</h3>
-              <button 
-                className="modal-close" 
-                onClick={() => setShowConfirmModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="modal-icon">⚠️</div>
-              <p>{confirmMessage}</p>
-            </div>
-            <div className="modal-footer">
-              <button 
-                className="modal-btn cancel-btn" 
-                onClick={() => setShowConfirmModal(false)}
-              >
-                إلغاء
-              </button>
-              <button 
-                className="modal-btn confirm-btn" 
-                onClick={() => confirmAction && confirmAction()}
-              >
-                نعم، تأكيد
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invoice Modal */}
-      {showInvoiceModal && (
-        <div className="modal-overlay" onClick={() => setShowInvoiceModal(false)}>
-          <div className="modal-content invoice-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>إنشاء فاتورة احترافية</h3>
-              <button 
-                className="modal-close" 
-                onClick={() => setShowInvoiceModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="invoice-form">
-                <div className="form-group">
-                  <label>التوقيع:</label>
-                  <input
-                    type="text"
-                    value={invoiceSignature}
-                    onChange={(e) => setInvoiceSignature(e.target.value)}
-                    placeholder="عصام إلكتريك"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>التذييل:</label>
-                  <textarea
-                    value={invoiceFooter}
-                    onChange={(e) => setInvoiceFooter(e.target.value)}
-                    placeholder="شكراً لثقتكم بنا"
-                    rows="3"
-                  />
-                </div>
-                <div className="invoice-items">
-                  <h4>المواد المختارة:</h4>
-                  {invoiceItems.map((item, index) => (
-                    <div key={index} className="invoice-item">
-                      <span>{item.item_name}</span>
-                      <span>x{item.quantity}</span>
-                      <span>{item.price} دج</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button 
-                className="modal-btn cancel-btn" 
-                onClick={() => setShowInvoiceModal(false)}
-              >
-                إلغاء
-              </button>
-              <button 
-                className="modal-btn btn-success" 
-                onClick={sendInvoiceEmail}
-                title="إرسال عبر واتساب"
-              >
-                📱 واتساب
-              </button>
-              <button 
-                className="modal-btn confirm-btn" 
-                onClick={generateInvoicePDF}
-                title="إنشاء PDF"
-              >
-                📄 إنشاء PDF
-              </button>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>تأكيد</h3>
+            <p>{confirmMessage}</p>
+            <div className="modal-actions">
+              <button onClick={() => setShowConfirmModal(false)} className="btn btn-secondary">إلغاء</button>
+              <button onClick={confirmAction} className="btn btn-danger">تأكيد</button>
             </div>
           </div>
         </div>
       )}
       
-      <footer className="app-footer">
-        <span>© {new Date().getFullYear()} مساعد عصام إلكتريك</span>
-      </footer>
+      {/* Notes Editing Modal */}
+      {Object.keys(showNotesEditor).some(key => showNotesEditor[key]) && (
+        <div className="modal-overlay">
+          <div className="modal-content notes-modal">
+            <h3>تعديل الملاحظات</h3>
+            {customers.map(customer => 
+              showNotesEditor[customer.id] && (
+                <div key={customer.id} className="notes-modal-content">
+                  <p className="customer-name-modal">{customer.name}</p>
+                  <textarea
+                    value={editingNotes[customer.id] || ""}
+                    onChange={(e) => setEditingNotes({ ...editingNotes, [customer.id]: e.target.value })}
+                    placeholder="أضف ملاحظات خاصة بالزبون..."
+                    rows="6"
+                    className="notes-modal-textarea"
+                  />
+                  <div className="modal-actions">
+                    <button 
+                      onClick={() => handleCancelNotes(customer.id)} 
+                      className="btn btn-secondary"
+                    >
+                      إلغاء
+                    </button>
+                    <button 
+                      onClick={() => handleSaveNotes(customer.id)} 
+                      className="btn btn-primary"
+                    >
+                      حفظ
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Advance Payment Modal */}
+      {Object.keys(showAdvanceModal).some(key => showAdvanceModal[key]) && (
+        <div className="modal-overlay">
+          <div className="modal-content advance-modal">
+            <h3>إضافة تسبيق للزبون</h3>
+            {customers.map(customer => 
+              showAdvanceModal[customer.id] && (
+                <div key={customer.id} className="advance-modal-content">
+                  <div className="customer-info-advance">
+                    <p className="customer-name-advance">{customer.name}</p>
+                    <p className="current-advance">
+                      التسبيق الحالي: {formatPriceArabic(customer.advance || 0)}
+                    </p>
+                  </div>
+                  <div className="advance-input-group">
+                    <label>مبلغ التسبيق الجديد (دج):</label>
+                    <input
+                      type="number"
+                      value={advanceAmount[customer.id] || ""}
+                      onChange={(e) => setAdvanceAmount({ ...advanceAmount, [customer.id]: e.target.value })}
+                      placeholder="أدخل المبلغ"
+                      min="0"
+                      step="0.01"
+                      className="advance-input"
+                    />
+                  </div>
+                  <div className="advance-preview">
+                    {advanceAmount[customer.id] && !isNaN(parseFloat(advanceAmount[customer.id])) && (
+                      <p className="total-advance">
+                        إجمالي التسبيق بعد الإضافة: {formatPriceArabic((parseFloat(customer.advance) || 0) + parseFloat(advanceAmount[customer.id]))}
+                      </p>
+                    )}
+                  </div>
+                  <div className="modal-actions">
+                    <button 
+                      onClick={() => handleCancelAdvance(customer.id)} 
+                      className="btn btn-secondary"
+                    >
+                      إلغاء
+                    </button>
+                    <button 
+                      onClick={() => handleSaveAdvance(customer.id)} 
+                      className="btn btn-advance-save"
+                      disabled={!advanceAmount[customer.id] || isNaN(parseFloat(advanceAmount[customer.id])) || parseFloat(advanceAmount[customer.id]) <= 0}
+                    >
+                      إضافة التسبيق
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

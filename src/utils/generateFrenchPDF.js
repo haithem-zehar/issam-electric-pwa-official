@@ -30,7 +30,7 @@ const FRENCH_TRANSLATIONS = {
   'قاطع رباعي': 'Disjoncteur quadruple',
   'قاطع سداسي': 'Disjoncteur sextuple',
   
-  // Switches and outlets
+  // Switches
   'مفتاح': 'Interrupteur',
   'أحادي': 'simple',
   'مزدوج': 'double',
@@ -49,6 +49,7 @@ const FRENCH_TRANSLATIONS = {
   'مفتاح مقاوم للغبار': 'Interrupteur anti-poussière',
   'مفتاح مقاوم للانفجار': 'Interrupteur antidéflagrant',
   
+  // Outlets
   'قابس': 'Prise',
   'قابس مع أرضي': 'Prise avec terre',
   'قابس بدون أرضي': 'Prise sans terre',
@@ -80,7 +81,7 @@ const FRENCH_TRANSLATIONS = {
   'حديقة': 'jardin',
   'خارجية': 'extérieur',
   
-  // Distribution boards
+  // Distribution
   'لوحة توزيع': 'Tableau électrique',
   'صندوق توزيع': 'Boîte de dérivation',
   'فتحات': 'pôles',
@@ -88,7 +89,7 @@ const FRENCH_TRANSLATIONS = {
   'منزلية': 'domestique',
   'تجارية': 'commercial',
   
-  // Conduits
+  // Conduits and accessories
   'أنبوب': 'Tuyau',
   'كهرباء': 'électrique',
   'مرن': 'flexible',
@@ -99,14 +100,14 @@ const FRENCH_TRANSLATIONS = {
   'تيه': 'Té',
   'غطاء': 'Bouchon',
   'قفل': 'Collier',
-  
-  // Accessories
   'شريط': 'Ruban',
   'عازل': 'isolant',
   'لاصق': 'adhésif',
   'كهربائي': 'électrique',
   'تفلون': 'Téflon',
   'حراري': 'thermique',
+  
+  // Hardware
   'مسامير': 'Vis',
   'حامل': 'Support',
   'دومينو': 'Domino',
@@ -137,6 +138,8 @@ const FRENCH_TRANSLATIONS = {
   'قنوات': 'goulottes',
   'لوحات': 'tableaux',
   'زجاج': 'verre',
+  
+  // Measurement
   'مقياس': 'Multimètre',
   'كهربائي': 'électrique',
   'جهد': 'tension',
@@ -150,12 +153,18 @@ const FRENCH_TRANSLATIONS = {
   'معامل قدرة': 'facteur de puissance',
   'اختبار': 'test',
   'مؤشر': 'indicateur',
+  
+  // Communication
   'راديو': 'radio',
   'تلفاز': 'TV',
   'هاتف': 'téléphone',
+  
+  // Welding
   'لحام': 'Soudure',
   'كهربائي': 'électrique',
   'غاز': 'gaz',
+  
+  // Power tools
   'مثقاب': 'Perceuse',
   'يدوي': 'manuel',
   'مطرقة': 'perforateur',
@@ -164,7 +173,7 @@ const FRENCH_TRANSLATIONS = {
   'شريطي': 'à ruban',
   'ميتري': 'à onglet',
   
-  // Industrial equipment
+  // Power equipment
   'محول': 'Transformateur',
   'مولد': 'Générateur',
   'كهربائي': 'électrique',
@@ -175,7 +184,7 @@ const FRENCH_TRANSLATIONS = {
   'محمول': 'portable',
   'سريع': 'rapide',
   
-  // Automation
+  // Industrial automation
   'PLC': 'Automate',
   'HMI': 'Interface homme-machine',
   'VFD': 'Variateur de fréquence',
@@ -205,57 +214,6 @@ const FRENCH_TRANSLATIONS = {
   'Control Panel': 'Tableau de commande',
   'Operator Panel': 'Pupitre opérateur',
   'Touch Screen': 'Écran tactile',
-  'Keypad': 'Clavier',
-  'Display': 'Affichage',
-  'Communication Module': 'Module de communication',
-  'Network Module': 'Module réseau',
-  'I/O Module': 'Module E/S',
-  'Analog Module': 'Module analogique',
-  'Digital Module': 'Module numérique',
-  
-  // Security
-  'كاميرا': 'Caméra',
-  'مراقبة': 'surveillance',
-  'مسجل': 'Enregistreur',
-  'فيديو': 'vidéo',
-  'شاشة': 'Écran',
-  'نظام': 'Système',
-  'إنذار': 'alarme',
-  'كاشف': 'Détecteur',
-  'صافرة': 'Sirène',
-  'ضوء': 'Lampe',
-  'لوحة تحكم': 'Tableau de contrôle',
-  'مفتاح طوارئ': 'Bouton d\'urgence',
-  'زر': 'Bouton',
-  'قفل': 'Serrure',
-  'إلكتروني': 'électronique',
-  'قارئ': 'Lecteur',
-  'بطاقة': 'carte',
-  'بصمة': 'empreinte',
-  'وجه': 'visage',
-  'عين': 'iris',
-  'بوابة': 'Porte',
-  'أمان': 'sécurité',
-  'حاجز': 'Barrière',
-  'دوارة': 'tourniquet',
-  'انزلاقية': 'coulissante',
-  'مرفوعة': 'levante',
-  'نظام صوت': 'Système audio',
-  'ميكروفون': 'Microphone',
-  'مكبر صوت': 'Haut-parleur',
-  'سماعة': 'Écouteur',
-  'جهاز اتصال داخلي': 'Interphone',
-  
-  // Renewable energy
-  'لوح شمسي': 'Panneau solaire',
-  'منظم شمسي': 'Régulateur solaire',
-  'عاكس شمسي': 'Onduleur solaire',
-  'بطارية شمسية': 'Batterie solaire',
-  'حامل لوح شمسي': 'Support panneau solaire',
-  'قاعدة لوح شمسي': 'Base panneau solaire',
-  'كابل شمسي': 'Câble solaire',
-  'صندوق توصيل شمسي': 'Boîte de jonction solaire',
-  'صمام شمسي': 'Diode solaire'
 };
 
 // Function to translate Arabic text to French
@@ -279,10 +237,14 @@ function translateToFrench(text) {
   return translated;
 }
 
-// French price formatting
+// Enhanced French price formatting - removes slashes and uses proper formatting
 function formatPriceFrench(price) {
-  if (isNaN(price)) return '';
-  return `${Number(price).toLocaleString('fr-FR')} DA`;
+  if (isNaN(price)) return '0 DA';
+  // Convert to string, remove any existing slashes, then format with French locale
+  const cleanNumber = String(price).replace(/\//g, '');
+  const numericValue = Number(cleanNumber);
+  // Use French locale with spaces as thousand separators
+  return `${numericValue.toLocaleString('fr-FR')} DA`;
 }
 
 export function generateFrenchPDF(customer, purchases, total, paidByIssamTotal, creditTotal) {
@@ -292,87 +254,149 @@ export function generateFrenchPDF(customer, purchases, total, paidByIssamTotal, 
     format: 'a4'
   });
 
-  // Set document properties
-  doc.setProperties({
-    title: `Facture ${customer.name}`,
-    subject: 'Facture d\'achats électriques',
-    author: 'Issam Électrique'
-  });
-
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20; // Consistent margins
+  const contentWidth = pageWidth - (2 * margin);
   let yPosition = 30;
 
-  // Header
-  doc.setFontSize(20);
+  // Header - PROFESSIONAL MONOCHROME
+  doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0); // Pure black title
   doc.text('Facture Issam Électrique', pageWidth / 2, yPosition, { align: 'center' });
   
-  yPosition += 15;
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Client: ${customer.name}`, 20, yPosition);
-  
-  yPosition += 10;
-  doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 20, yPosition);
-  
   yPosition += 20;
-
-  // Table header
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
   
-  const headers = ['Produit', 'Quantité', 'Prix', 'Magasin', 'Payé par'];
-  const columnWidths = [70, 25, 35, 40, 30];
-  let xPosition = 20;
+  // Customer information - PROFESSIONAL LAYOUT
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0); // Pure black
+  
+  // Customer details in a clean format
+  doc.text(`Client: ${customer.name}`, margin, yPosition);
+  yPosition += 8;
+  
+  if (customer.phone) {
+    doc.text(`Téléphone: ${customer.phone}`, margin, yPosition);
+    yPosition += 8;
+  }
+  
+  doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, margin, yPosition);
+  yPosition += 15;
 
-  // Draw header
+  // Table header - OPTIMIZED FOR A4
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0); // Pure black
+  
+  // Calculate optimal column widths for A4
+  const headers = ['Produit', 'Qté', 'Prix', 'Magasin', 'Payé par'];
+  const totalTableWidth = contentWidth;
+  const columnWidths = [
+    Math.round(totalTableWidth * 0.35), // Produit - 35%
+    Math.round(totalTableWidth * 0.12), // Qté - 12%
+    Math.round(totalTableWidth * 0.18), // Prix - 18%
+    Math.round(totalTableWidth * 0.20), // Magasin - 20%
+    Math.round(totalTableWidth * 0.15)  // Payé par - 15%
+  ];
+  
+  // Adjust last column to fit exactly
+  const calculatedWidth = columnWidths.reduce((a, b) => a + b, 0);
+  if (calculatedWidth !== totalTableWidth) {
+    columnWidths[columnWidths.length - 1] += totalTableWidth - calculatedWidth;
+  }
+  
+  let xPosition = margin;
+
+  // Draw header background - PROFESSIONAL GRAY
+  doc.setFillColor(245, 245, 245); // Very light gray for printing
+  doc.rect(xPosition, yPosition - 6, totalTableWidth, 10, 'F');
+
+  // Draw header borders and text - CLEAN DESIGN
   headers.forEach((header, index) => {
-    doc.rect(xPosition, yPosition - 5, columnWidths[index], 8, 'S');
+    doc.setDrawColor(200, 200, 200); // Light gray borders
+    doc.rect(xPosition, yPosition - 6, columnWidths[index], 10, 'S');
+    doc.setTextColor(0, 0, 0); // Pure black text
     doc.text(header, xPosition + columnWidths[index] / 2, yPosition, { align: 'center' });
     xPosition += columnWidths[index];
   });
 
-  yPosition += 10;
+  yPosition += 12;
 
-  // Table data
+  // Table data - OPTIMIZED FOR READABILITY
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0); // Pure black
   
-  purchases.forEach((item) => {
-    if (yPosition > pageHeight - 40) {
+  purchases.forEach((item, index) => {
+    // Check if we need a new page - BETTER PAGE BREAK HANDLING
+    if (yPosition > pageHeight - 60) {
       doc.addPage();
       yPosition = 30;
+      
+      // Redraw header on new page
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      xPosition = margin;
+      doc.setFillColor(245, 245, 245);
+      doc.rect(xPosition, yPosition - 6, totalTableWidth, 10, 'F');
+      
+      headers.forEach((header, headerIndex) => {
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(xPosition, yPosition - 6, columnWidths[headerIndex], 10, 'S');
+        doc.setTextColor(0, 0, 0);
+        doc.text(header, xPosition + columnWidths[headerIndex] / 2, yPosition, { align: 'center' });
+        xPosition += columnWidths[headerIndex];
+      });
+      yPosition += 12;
     }
 
-    xPosition = 20;
+    xPosition = margin;
     
-    // Product name (translated to French)
-    doc.rect(xPosition, yPosition - 5, columnWidths[0], 8, 'S');
+    // Zebra striping for better readability - SUBTLE
+    if (index % 2 === 1) {
+      doc.setFillColor(250, 250, 250); // Very light gray
+      doc.rect(xPosition, yPosition - 4, totalTableWidth, 8, 'F');
+    }
+    
+    // Product name (translated to French) - BETTER TEXT HANDLING
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(xPosition, yPosition - 4, columnWidths[0], 8, 'S');
+    doc.setTextColor(0, 0, 0);
     const translatedProductName = translateToFrench(item.item_name);
-    const productName = translatedProductName.length > 25 ? translatedProductName.substring(0, 25) + '...' : translatedProductName;
-    doc.text(productName, xPosition + 2, yPosition);
+    const maxProductLength = Math.floor(columnWidths[0] / 3.5); // Better character calculation
+    const productName = translatedProductName.length > maxProductLength ? 
+      translatedProductName.substring(0, maxProductLength) + '...' : translatedProductName;
+    doc.text(productName, xPosition + 3, yPosition);
     xPosition += columnWidths[0];
 
-    // Quantity
-    doc.rect(xPosition, yPosition - 5, columnWidths[1], 8, 'S');
+    // Quantity - CENTERED
+    doc.rect(xPosition, yPosition - 4, columnWidths[1], 8, 'S');
+    doc.setTextColor(0, 0, 0);
     doc.text((item.quantity || 1).toString(), xPosition + columnWidths[1] / 2, yPosition, { align: 'center' });
     xPosition += columnWidths[1];
 
-    // Price
-    doc.rect(xPosition, yPosition - 5, columnWidths[2], 8, 'S');
+    // Price - CLEAN NUMBER FORMATTING
+    doc.rect(xPosition, yPosition - 4, columnWidths[2], 8, 'S');
+    doc.setTextColor(0, 0, 0);
     doc.text(formatPriceFrench(item.price), xPosition + columnWidths[2] / 2, yPosition, { align: 'center' });
     xPosition += columnWidths[2];
 
-    // Store name (translated to French)
-    doc.rect(xPosition, yPosition - 5, columnWidths[3], 8, 'S');
+    // Store name (translated to French) - BETTER TEXT HANDLING
+    doc.rect(xPosition, yPosition - 4, columnWidths[3], 8, 'S');
+    doc.setTextColor(0, 0, 0);
     const translatedStoreName = translateToFrench(item.store_name);
-    const storeName = translatedStoreName.length > 15 ? translatedStoreName.substring(0, 15) + '...' : translatedStoreName;
+    const maxStoreLength = Math.floor(columnWidths[3] / 3.5);
+    const storeName = translatedStoreName.length > maxStoreLength ? 
+      translatedStoreName.substring(0, maxStoreLength) + '...' : translatedStoreName;
     doc.text(storeName, xPosition + columnWidths[3] / 2, yPosition, { align: 'center' });
     xPosition += columnWidths[3];
 
-    // Payment status
-    doc.rect(xPosition, yPosition - 5, columnWidths[4], 8, 'S');
+    // Payment status - CLEAN LABELS
+    doc.rect(xPosition, yPosition - 4, columnWidths[4], 8, 'S');
+    doc.setTextColor(0, 0, 0);
     let paymentText = 'Client';
     if (item.paymentStatus === 'issam') {
       paymentText = 'Issam';
@@ -384,46 +408,98 @@ export function generateFrenchPDF(customer, purchases, total, paidByIssamTotal, 
     yPosition += 10;
   });
 
-  // Totals
-  yPosition += 10;
+  // Totals section - PROFESSIONAL LAYOUT
+  yPosition += 15;
+  
+  // Draw a separator line
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
+  
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Total: ${formatPriceFrench(total)}`, 20, yPosition);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Total: ${formatPriceFrench(total)}`, margin, yPosition);
 
   if (paidByIssamTotal > 0) {
-    yPosition += 6;
-    doc.setFontSize(10);
+    yPosition += 8;
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Payé par Issam: ${formatPriceFrench(paidByIssamTotal)}`, 20, yPosition);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Payé par Issam: ${formatPriceFrench(paidByIssamTotal)}`, margin, yPosition);
   }
 
   if (creditTotal > 0) {
-    yPosition += 6;
-    doc.text(`Crédit: ${formatPriceFrench(creditTotal)}`, 20, yPosition);
+    yPosition += 8;
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Crédit: ${formatPriceFrench(creditTotal)}`, margin, yPosition);
   }
 
-  // Signature section
-  yPosition += 15;
+  // Show advance information after totals - PROFESSIONAL LAYOUT
+  if (customer.advance && Number(customer.advance) > 0) {
+    yPosition += 12;
+    
+    // Draw a subtle separator line for advance section
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Acompte versé par le client: ${formatPriceFrench(customer.advance)}`, margin, yPosition);
+    
+    // Add advance date if available
+    if (customer.advanceDate) {
+      yPosition += 6;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      const advanceDate = new Date(customer.advanceDate);
+      const formattedDate = advanceDate.toLocaleDateString('fr-FR') + ' - ' + 
+                           advanceDate.toLocaleTimeString('fr-FR', { 
+                             hour: '2-digit', 
+                             minute: '2-digit' 
+                           });
+      doc.text(`Date de l'acompte: ${formattedDate}`, margin, yPosition);
+    }
+  }
+
+  // Signature section - PROFESSIONAL ALIGNMENT
+  yPosition += 20;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('Signature:', 20, yPosition);
-  doc.text('Date:', pageWidth / 2, yPosition);
+  doc.setTextColor(0, 0, 0);
   
-  yPosition += 10;
+  // Left side - Signature
+  doc.text('Signature:', margin, yPosition);
+  yPosition += 8;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('_________________', 20, yPosition);
-  doc.text('_________________', pageWidth / 2, yPosition);
-
-  // Footer
-  yPosition += 20;
+  doc.text('_________________', margin, yPosition);
+  
+  // Right side - Date
+  yPosition -= 8;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Date:', pageWidth - margin - 40, yPosition);
+  yPosition += 8;
   doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('_________________', pageWidth - margin - 40, yPosition);
+
+  // Footer - PROFESSIONAL
+  yPosition += 25;
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'italic');
+  doc.setTextColor(0, 0, 0);
   doc.text('Merci pour votre confiance', pageWidth / 2, yPosition, { align: 'center' });
+  
+  // Add company contact info
+  yPosition += 8;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Issam Électrique - Tél: 0555 12 34 56', pageWidth / 2, yPosition, { align: 'center' });
 
   // Save the PDF
   const fileName = `Facture_${customer.name}_${new Date().toLocaleDateString('fr-FR').replace(/\//g, '-')}.pdf`;
   doc.save(fileName);
-  
-  console.log('French PDF Export completed successfully');
 } 

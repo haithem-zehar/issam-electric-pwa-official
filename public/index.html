@@ -1,19 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#1976d2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="عصام إلكتريك" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#1976d2" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
     <link rel="manifest" href="/manifest.json" />
-    <title>Isam Electric Assistant</title>
-    <link rel="icon" href="icon.png" />
-    <link rel="apple-touch-icon" href="icon.png" />
-    <meta name="theme-color" content="#00aaff" />
-<link rel="apple-touch-startup-image" href="splash.png" />
-
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="apple-touch-startup-image" href="/icon-512.png" />
+    
+    <title>عصام إلكتريك - نظام إدارة الأعمال</title>
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/static/js/bundle.js" as="script" />
+    <link rel="preload" href="/static/css/main.css" as="style" />
+    
+    <!-- Offline fallback -->
+    <style>
+      .offline-message {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #ff9800;
+        color: white;
+        text-align: center;
+        padding: 10px;
+        z-index: 9999;
+        font-weight: bold;
+      }
+      .offline .offline-message {
+        display: block;
+      }
+    </style>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div class="offline-message">أنت في وضع عدم الاتصال - التطبيق يعمل محلياً</div>
+    <noscript>تحتاج إلى تفعيل JavaScript لتشغيل هذا التطبيق.</noscript>
     <div id="root"></div>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/serviceWorker.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+              
+              // Handle updates
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New content is available, show update prompt
+                    if (confirm('تم تحديث التطبيق. هل تريد إعادة تحميل الصفحة؟')) {
+                      window.location.reload();
+                    }
+                  }
+                });
+              });
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // Handle online/offline status
+      window.addEventListener('online', () => {
+        document.body.classList.remove('offline');
+      });
+      
+      window.addEventListener('offline', () => {
+        document.body.classList.add('offline');
+      });
+      
+      // Check initial online status
+      if (!navigator.onLine) {
+        document.body.classList.add('offline');
+      }
+    </script>
   </body>
 </html> 
