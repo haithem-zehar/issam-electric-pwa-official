@@ -4,6 +4,9 @@ import { generatePDF } from "./utils/generatePDF";
 import { generateFrenchPDF } from "./utils/generateFrenchPDF";
 import * as XLSX from 'xlsx';
 import { getBestArabicFont, getArabicPDFConfig, setupPdfMakeWithArabic } from './arabicFonts';
+// Password protection configuration
+const correctPassword = 'issam123';
+
 // Database functions using localStorage
 const CLIENTS_KEY = 'clients';
 const PURCHASES_KEY = 'purchases';
@@ -470,6 +473,11 @@ function translateToFrench(text) {
 }
 
 function App() {
+  // Password protection state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
   // Navigation state
   const [activeSection, setActiveSection] = useState("customers");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -621,6 +629,26 @@ function App() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+
+  // Password protection functions
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (password === correctPassword) {
+      setIsAuthenticated(true);
+      setPasswordError("");
+      setPassword("");
+    } else {
+      setPasswordError("كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.");
+      setPassword("");
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    if (passwordError) {
+      setPasswordError("");
+    }
+  };
 
   // Load from localStorage
   useEffect(() => {
@@ -1913,6 +1941,51 @@ function App() {
     }
   };
 
+  // Password protection screen
+  if (!isAuthenticated) {
+    return (
+      <div className="app-bg" dir="rtl">
+        <div className="password-screen">
+          <div className="password-container">
+            <div className="password-header">
+              <img src="/issam-logo.png" alt="شعار عصام إلكتريك" />
+              <h1>مساعد عصام إلكتريك</h1>
+              <p>يرجى إدخال كلمة المرور للوصول إلى النظام</p>
+            </div>
+            
+            <form className="password-form" onSubmit={handlePasswordSubmit}>
+              <div className="password-input-group">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={handlePasswordChange}
+                  placeholder="أدخل كلمة المرور"
+                  className="password-input"
+                  autoFocus
+                  required
+                />
+                <button type="submit" className="password-submit-btn">
+                  دخول
+                </button>
+              </div>
+              
+              {passwordError && (
+                <div className="password-error">
+                  {passwordError}
+                </div>
+              )}
+            </form>
+            
+            <div className="password-footer">
+              <p>نظام إدارة عصام إلكتريك</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main app content
   return (
     <div className="app-bg" dir="rtl">
       <header>
