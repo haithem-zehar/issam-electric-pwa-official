@@ -4,6 +4,51 @@ import { generatePDF } from "./utils/generatePDF";
 import { generateFrenchPDF } from "./utils/generateFrenchPDF";
 import * as XLSX from 'xlsx';
 import { getBestArabicFont, getArabicPDFConfig, setupPdfMakeWithArabic } from './arabicFonts';
+
+// Logo Component for better logo handling
+const LogoComponent = ({ className, alt, fallbackIcon = "⚡" }) => {
+  const [logoError, setLogoError] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
+
+  const handleLogoError = () => {
+    console.log('Logo failed to load, showing fallback');
+    setLogoError(true);
+  };
+
+  const handleLogoLoad = () => {
+    console.log('Logo loaded successfully');
+    setLogoLoaded(true);
+  };
+
+  // Try multiple logo paths
+  const logoPaths = [
+    '/issam-logo.png',
+    '/logo.png',
+    '/icon.png',
+    '/favicon.ico'
+  ];
+
+  if (logoError) {
+    return (
+      <div className={`${className} header-logo-fallback`}>
+        {fallbackIcon}
+      </div>
+    );
+  }
+
+  return (
+    <img 
+      src={logoPaths[0]} // Start with the main logo path
+      alt={alt || "عصام إلكتريك"} 
+      className={`${className} ${logoLoaded ? 'logo-loaded' : 'logo-loading'}`}
+      onError={handleLogoError}
+      onLoad={handleLogoLoad}
+    />
+  );
+};
+
+
+
 // Password protection configuration
 const correctPassword = 'issam123';
 
@@ -1591,34 +1636,40 @@ function App() {
   // Navigation component
   const Navigation = () => (
     <nav className="app-nav">
-      <button 
-        key="customers-nav"
-        className={`nav-btn ${activeSection === 'customers' ? 'active' : ''}`}
-        onClick={() => setActiveSection('customers')}
-      >
-        الزبائن
-      </button>
-      <button 
-        key="purchases-nav"
-        className={`nav-btn ${activeSection === 'purchases' ? 'active' : ''}`}
-        onClick={() => setActiveSection('purchases')}
-      >
-        المشتريات
-      </button>
-      <button 
-        key="employees-nav"
-        className={`nav-btn ${activeSection === 'employees' ? 'active' : ''}`}
-        onClick={() => setActiveSection('employees')}
-      >
-        العمال
-      </button>
-      <button 
-        key="reports-nav"
-        className={`nav-btn ${activeSection === 'reports' ? 'active' : ''}`}
-        onClick={() => setActiveSection('reports')}
-      >
-        التقارير
-      </button>
+      <div className="nav-container">
+        <button 
+          key="customers-nav"
+          className={`nav-btn ${activeSection === 'customers' ? 'active' : ''}`}
+          onClick={() => setActiveSection('customers')}
+        >
+          <span className="nav-icon">🧑‍💼</span>
+          <span className="nav-text">الزبائن</span>
+        </button>
+        <button 
+          key="purchases-nav"
+          className={`nav-btn ${activeSection === 'purchases' ? 'active' : ''}`}
+          onClick={() => setActiveSection('purchases')}
+        >
+          <span className="nav-icon">🛒</span>
+          <span className="nav-text">المشتريات</span>
+        </button>
+        <button 
+          key="employees-nav"
+          className={`nav-btn ${activeSection === 'employees' ? 'active' : ''}`}
+          onClick={() => setActiveSection('employees')}
+        >
+          <span className="nav-icon">👷</span>
+          <span className="nav-text">العمال</span>
+        </button>
+        <button 
+          key="reports-nav"
+          className={`nav-btn ${activeSection === 'reports' ? 'active' : ''}`}
+          onClick={() => setActiveSection('reports')}
+        >
+          <span className="nav-icon">📊</span>
+          <span className="nav-text">التقارير</span>
+        </button>
+      </div>
     </nav>
   );
 
@@ -1626,23 +1677,18 @@ function App() {
   const AppHeader = () => (
     <header className="app-header">
       <div className="header-container">
-        <div className="header-logo-section">
-          <img 
-            src="/issam-logo.png" 
-            alt="عصام إلكتريك" 
-            className="header-logo"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'block';
-            }}
-          />
-          <div className="header-logo-fallback" style={{ display: 'none' }}>
-            ⚡
+        <div className="header-brand">
+          <div className="header-logo-section">
+            <LogoComponent 
+              className="header-logo"
+              alt="عصام إلكتريك"
+              fallbackIcon="⚡"
+            />
           </div>
-        </div>
-        <div className="header-content">
-          <h1 className="header-title">عصام إلكتريك</h1>
-          <p className="header-subtitle">نظام إدارة الأعمال الكهربائية</p>
+          <div className="header-content">
+            <h1 className="header-title">عصام إلكتريك</h1>
+            <p className="header-subtitle">نظام إدارة الأعمال الكهربائية</p>
+          </div>
         </div>
         <div className="header-actions">
           <button 
@@ -2590,7 +2636,29 @@ function App() {
         </div>
       )}
       
-      <AppHeader />
+      <div className="main-header">
+        <div className="logo-section">
+          <LogoComponent 
+            className="main-logo"
+            alt="عصام إلكتريك"
+            fallbackIcon="⚡"
+          />
+          <div className="logo-text">
+            <h1 className="main-title">عصام إلكتريك</h1>
+            <p className="main-subtitle">نظام إدارة الأعمال الكهربائية</p>
+          </div>
+        </div>
+        <div className="header-actions">
+          <button 
+            className="header-logout-btn"
+            onClick={handleLogout}
+            title="تسجيل الخروج"
+          >
+            <span className="logout-icon">🚪</span>
+            <span className="logout-text">خروج</span>
+          </button>
+        </div>
+      </div>
       <Navigation />
       <div className="app-container">
         {renderSection()}
